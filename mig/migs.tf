@@ -5,7 +5,8 @@ resource "google_compute_instance_template" "mig-template-1" {
   description = "This template is used to create the group1 instance template"
   machine_type = "e2-medium"
   can_ip_forward = false
-  
+  region = var.group1_region
+  tags         = ["allow-health-check"]
   disk {
       source_image = "debian-cloud/debian-11"
       auto_delete =  true 
@@ -33,7 +34,7 @@ resource "google_compute_health_check" "autohealing" {
   unhealthy_threshold = 10 # 50 seconds
 
   http_health_check {
-    request_path = "/"
+    # request_path = "/"
     port         = "8080"
   }
 }
@@ -43,16 +44,20 @@ resource "google_compute_autoscaler" "autoscaler-mig-1" {
   name = "autoscaler-mig-group-1"
   target = google_compute_instance_group_manager.mig1.id 
   //region = var.group1_region
+  zone = "us-west1-b"
 
   autoscaling_policy {
     max_replicas = 5
     min_replicas = 1
     cooldown_period = 60
 
-    metric {
-      name                       = "pubsub.googleapis.com/subscription/num_undelivered_messages"
-      //filter                     = "resource.type = pubsub_subscription AND resource.label.subscription_id = our-subscription"
-      //single_instance_assignment = 65535
+    # metric {
+    #   name                       = "pubsub.googleapis.com/subscription/num_undelivered_messages"
+    #   //filter                     = "resource.type = pubsub_subscription AND resource.label.subscription_id = our-subscription"
+    #   //single_instance_assignment = 65535
+    # }
+    cpu_utilization {
+      target = 0.75
     }
   }
 }
@@ -64,7 +69,9 @@ resource "google_compute_autoscaler" "autoscaler-mig-1" {
 resource "google_compute_instance_group_manager" "mig1" {
     name = "mig-group-1"
     base_instance_name = "mig-group-1"
-
+    //region = var.group1_region
+    //distribution_policy_zones = ["us-east1-a", "us-east1-b"]
+    zone = "us-west1-b"
     version {
         instance_template = google_compute_instance_template.mig-template-1.id
     }
@@ -88,7 +95,8 @@ resource "google_compute_instance_template" "mig-template-2" {
   description = "This template is used to create the group1 instance template"
   machine_type = "e2-medium"
   can_ip_forward = false
-  
+  region = var.group2_region
+  tags         = ["allow-health-check"]
   disk {
       source_image = "debian-cloud/debian-11"
       auto_delete =  true 
@@ -114,16 +122,20 @@ resource "google_compute_autoscaler" "autoscaler-mig-2" {
   name = "autoscaler-mig-group-2"
   target = google_compute_instance_group_manager.mig2.id 
   //region = var.group2_region
+  zone = "us-east1-b"
 
   autoscaling_policy {
     max_replicas = 5
     min_replicas = 1
     cooldown_period = 60
 
-    metric {
-      name                       = "pubsub.googleapis.com/subscription/num_undelivered_messages"
-      //filter                     = "resource.type = pubsub_subscription AND resource.label.subscription_id = our-subscription"
-      //single_instance_assignment = 65535
+    # metric {
+    #   name                       = "pubsub.googleapis.com/subscription/num_undelivered_messages"
+    #   //filter                     = "resource.type = pubsub_subscription AND resource.label.subscription_id = our-subscription"
+    #   //single_instance_assignment = 65535
+    # }
+    cpu_utilization {
+      target = 0.75
     }
   }
 }
@@ -138,6 +150,7 @@ resource "google_compute_instance_group_manager" "mig2" {
     base_instance_name = "mig-group-2"
     //region = var.group2_region
     //distribution_policy_zones = ["us-west1-a", "us-west1-b"]
+    zone = "us-east1-b"
 
     version {
         instance_template = google_compute_instance_template.mig-template-2.id
